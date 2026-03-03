@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>YouRH · Agendamentos por Faixa</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0a0a0a;
+  --surface:#111111;
+  --surface2:#1a1a1a;
+  --border:#222222;
+  --text:#f0f0f0;
+  --muted:#555;
+  --label:#888;
+  --green:#22c55e;
+  --orange:#f97316;
+  --purple:#a855f7;
+  --blue:#3b82f6;
+  --yellow:#eab308;
+  --red:#ef4444;
+  --c1:#22c55e;
+  --c2:#3b82f6;
+  --c3:#f97316;
+  --c4:#a855f7;
+  --c5:#eab308;
+  --c6:#ef4444;
+  --c7:#06b6d4;
+}
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:13px}
+
+/* ── TOPBAR ── */
+.topbar{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:10px 20px;border-bottom:1px solid var(--border);
+  position:sticky;top:0;z-index:100;background:var(--bg);gap:12px;flex-wrap:wrap;
+}
+.topbar-left{display:flex;align-items:center;gap:10px}
+.logo{width:28px;height:28px;background:var(--green);border-radius:6px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px;color:#000;flex-shrink:0}
+.topbar-title{font-size:12px;color:var(--label)}
+.topbar-title strong{color:var(--text);font-weight:600}
+.topbar-right{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.period-pill{font-size:11px;color:var(--label);padding:2px 8px;border-radius:4px}
+.updated-badge{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--green);background:rgba(34,197,94,.1);padding:3px 10px;border-radius:20px;border:1px solid rgba(34,197,94,.2)}
+.updated-badge::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--green);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+
+/* ── FILTERS ── */
+.filters{
+  padding:10px 20px;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:16px;flex-wrap:wrap;
+}
+.filter-group{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.filter-label{font-size:10px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--label);white-space:nowrap}
+.pill{
+  font-size:11px;font-weight:500;padding:3px 10px;border-radius:20px;
+  border:1px solid var(--border);background:transparent;color:var(--label);
+  cursor:pointer;transition:all .15s;white-space:nowrap;
+}
+.pill:hover{border-color:#444;color:var(--text)}
+.pill.active{background:var(--green);color:#000;border-color:var(--green);font-weight:700}
+.pill.active-status{background:var(--purple);color:#fff;border-color:var(--purple)}
+.pill.active-origem{background:var(--orange);color:#000;border-color:var(--orange)}
+.reset-btn{
+  font-size:11px;font-weight:500;padding:3px 10px;border-radius:20px;
+  border:1px solid var(--border);background:transparent;color:var(--label);
+  cursor:pointer;transition:all .15s;margin-left:auto;
+}
+.reset-btn:hover{color:var(--text);border-color:#444}
+.filters-divider{width:1px;height:20px;background:var(--border)}
+
+/* ── KPI CARDS ── */
+.kpi-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:1px;background:var(--border);border-top:1px solid var(--border);border-bottom:1px solid var(--border)}
+.kpi-card{background:var(--surface);padding:16px 20px;position:relative;overflow:hidden}
+.kpi-card::after{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--accent,var(--green))}
+.kpi-label{font-size:10px;font-weight:600;letter-spacing:.8px;text-transform:uppercase;color:var(--label);margin-bottom:8px}
+.kpi-value{font-size:28px;font-weight:800;line-height:1;color:var(--accent,var(--green));margin-bottom:4px}
+.kpi-sub{font-size:11px;color:var(--muted)}
+.kpi-badge{display:inline-block;font-size:10px;font-weight:600;padding:2px 6px;border-radius:4px;margin-top:6px}
+.badge-up{background:rgba(34,197,94,.12);color:var(--green)}
+.badge-down{background:rgba(239,68,68,.12);color:var(--red)}
+.badge-neutral{background:rgba(168,85,247,.12);color:var(--purple)}
+
+/* ── SECTIONS ── */
+.content{padding:20px}
+.section{margin-bottom:20px}
+.section-title{font-size:12px;font-weight:700;color:var(--text);margin-bottom:2px;display:flex;align-items:center;gap:8px}
+.section-title::before{content:'';width:3px;height:14px;border-radius:2px;background:var(--green);flex-shrink:0}
+.section-sub{font-size:11px;color:var(--muted);margin-bottom:14px;padding-left:11px}
+.chart-grid{display:grid;grid-template-columns:1.4fr 1fr;gap:16px}
+@media(max-width:900px){.chart-grid{grid-template-columns:1fr}}
+.chart-card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:20px}
+.chart-wrap{position:relative;height:240px}
+.chart-wrap-tall{position:relative;height:300px}
+
+/* ── TABLE ── */
+.table-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:12px}
+thead th{
+  font-size:10px;font-weight:700;letter-spacing:.7px;text-transform:uppercase;
+  color:var(--label);padding:8px 12px;text-align:right;
+  border-bottom:1px solid var(--border);white-space:nowrap;
+}
+thead th:first-child{text-align:left}
+tbody tr{transition:background .12s}
+tbody tr:hover{background:var(--surface2)}
+tbody td{padding:10px 12px;text-align:right;border-bottom:1px solid rgba(34,34,34,.8);color:var(--label);font-variant-numeric:tabular-nums}
+tbody td:first-child{text-align:left;color:var(--text);font-weight:600}
+tfoot td{padding:10px 12px;text-align:right;font-weight:700;color:var(--green);border-top:1px solid var(--border)}
+tfoot td:first-child{text-align:left;color:var(--text)}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:8px;flex-shrink:0}
+
+/* ── SPARKBARS ── */
+.spark-row{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+.spark-row:last-child{margin-bottom:0}
+.spark-name{font-size:12px;font-weight:600;width:90px;flex-shrink:0;color:var(--text)}
+.spark-track{flex:1;height:7px;background:var(--surface2);border-radius:4px;overflow:hidden}
+.spark-fill{height:100%;border-radius:4px;transition:width 1.2s cubic-bezier(.22,1,.36,1)}
+.spark-pct{font-size:11px;color:var(--muted);width:32px;text-align:right;flex-shrink:0}
+.spark-num{font-size:11px;color:var(--label);width:44px;text-align:right;flex-shrink:0;font-variant-numeric:tabular-nums}
+
+/* ── COVERAGE NOTICE ── */
+.notice{
+  background:rgba(234,179,8,.06);border:1px solid rgba(234,179,8,.2);
+  border-radius:6px;padding:10px 14px;margin-bottom:16px;
+  font-size:11px;color:rgba(234,179,8,.8);display:flex;align-items:center;gap:8px;
+}
+.notice::before{content:'⚠';font-size:12px}
+
+/* ── FOOTER ── */
+.footer{border-top:1px solid var(--border);padding:12px 20px;font-size:10px;color:var(--muted);letter-spacing:.5px;text-align:center}
+
+/* ── ANIMATIONS ── */
+@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+.kpi-card,.chart-card,.section{animation:fadeUp .4s ease both}
+.kpi-card:nth-child(1){animation-delay:.04s}.kpi-card:nth-child(2){animation-delay:.08s}
+.kpi-card:nth-child(3){animation-delay:.12s}.kpi-card:nth-child(4){animation-delay:.16s}
+.kpi-card:nth-child(5){animation-delay:.20s}
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="topbar-left">
+    <div class="logo">Y</div>
+    <div>
+      <div class="topbar-title"><strong>YouRH</strong> / Agendamentos por Faixa de Colaboradores</div>
+    </div>
+  </div>
+  <div class="topbar-right">
+    <span class="period-pill" id="periodLabel">—</span>
+    <div class="updated-badge">Atualizado</div>
+  </div>
+</div>
+
+<!-- FILTERS -->
+<div class="filters">
+  <div class="filter-group">
+    <span class="filter-label">Mês</span>
+    <div id="filterMes"></div>
+  </div>
+  <div class="filters-divider"></div>
+  <div class="filter-group">
+    <span class="filter-label">Faixa</span>
+    <div id="filterFaixa"></div>
+  </div>
+  <div class="filters-divider"></div>
+  <div class="filter-group">
+    <span class="filter-label">Status</span>
+    <div id="filterStatus"></div>
+  </div>
+  <div class="filters-divider"></div>
+  <div class="filter-group">
+    <span class="filter-label">Origem</span>
+    <div id="filterOrigem"></div>
+  </div>
+  <button class="reset-btn" onclick="resetFilters()">↺ Resetar filtros</button>
+</div>
+
+<!-- KPIs -->
+<div class="kpi-row" id="kpiRow"></div>
+
+<!-- CONTENT -->
+<div class="content">
+
+  <div id="coverageNotice" class="notice" style="display:none"></div>
+
+  <!-- ROW 1: Barras empilhadas + Linha -->
+  <div class="chart-grid section">
+    <div class="chart-card">
+      <div class="section-title">Volume por mês · faixas empilhadas</div>
+      <div class="section-sub">Total de leads com faixa informada por mês, empilhado por faixa de colaboradores.</div>
+      <div class="chart-wrap-tall"><canvas id="barChart"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="section-title">Evolução por faixa</div>
+      <div class="section-sub">Tendência mensal de cada faixa de colaboradores.</div>
+      <div class="chart-wrap-tall"><canvas id="lineChart"></canvas></div>
+    </div>
+  </div>
+
+  <!-- ROW 2: Tabela + Barras de participação -->
+  <div class="chart-grid section">
+    <div class="chart-card">
+      <div class="section-title">Tabela detalhada por faixa × mês</div>
+      <div class="section-sub">Breakdown completo. Lead = não agendou · Lead Qualificado = demo realizada · Cliente = venda fechada.</div>
+      <div class="table-wrap"><table id="detailTable"></table></div>
+    </div>
+    <div class="chart-card">
+      <div class="section-title">Participação por faixa · período selecionado</div>
+      <div class="section-sub">Distribuição relativa e absoluta de cada faixa no total filtrado.</div>
+      <div id="sparkBars" style="padding-top:8px"></div>
+    </div>
+  </div>
+
+  <!-- ROW 3: Status por faixa -->
+  <div class="section">
+    <div class="chart-card">
+      <div class="section-title">Status por faixa · Lead vs Lead Qualificado vs Cliente</div>
+      <div class="section-sub">Composição de estágios dentro de cada faixa de colaboradores.</div>
+      <div class="chart-wrap"><canvas id="statusChart"></canvas></div>
+    </div>
+  </div>
+
+</div>
+
+<div class="footer" id="footerEl"></div>
+
+<script>
+// ═══════════════════════════════
+//  RAW DATA (gerado do CSV)
+// ═══════════════════════════════
+const RAW = {"months":["Jan/25","Fev/25","Mar/25","Abr/25","Mai/25","Jun/25","Jul/25","Ago/25","Set/25","Out/25","Nov/25","Dez/25","Jan/26","Fev/26","Mar/26"],"faixas":["-20","20-30","31-60","61-120","121-300","301-500","500+"],"statuses":["Lead","Lead Qualificado","Cliente"],"origens":["Pago","Orgânico","Social","Referência","Direto","Outros"],"dataset":{"Mar/26||500+||Lead||Orgânico":1,"Mar/26||500+||Lead||Pago":5,"Fev/26||20-30||Lead||Outros":9,"Mar/26||301-500||Lead||Pago":2,"Jun/25||500+||Lead||Outros":26,"Nov/25||61-120||Lead||Orgânico":2,"Ago/25||500+||Lead||Social":1,"Mar/26||20-30||Lead||Pago":15,"Mar/26||61-120||Lead||Pago":4,"Mar/26||31-60||Lead||Pago":6,"Mar/26||31-60||Lead||Direto":1,"Fev/26||121-300||Lead||Pago":29,"Fev/26||61-120||Lead||Social":2,"Fev/26||20-30||Lead||Pago":125,"Fev/26||500+||Lead||Pago":26,"Fev/26||31-60||Lead||Referência":2,"Fev/26||61-120||Lead||Direto":1,"Fev/26||61-120||Lead||Orgânico":4,"Fev/26||31-60||Lead||Pago":31,"Dez/25||20-30||Lead||Pago":19,"Jul/25||20-30||Lead||Outros":16,"Jan/26||301-500||Lead||Pago":3,"Fev/26||20-30||Lead||Orgânico":8,"Jun/25||20-30||Lead||Social":15,"Fev/26||61-120||Cliente||Orgânico":1,"Jan/26||500+||Lead||Pago":4,"Out/25||301-500||Lead||Pago":3,"Fev/26||61-120||Lead||Pago":38,"Mar/26||121-300||Lead||Outros":1,"Out/25||61-120||Lead||Referência":1,"Jan/26||61-120||Lead||Pago":14,"Fev/26||121-300||Lead||Outros":2,"Jan/26||20-30||Lead||Pago":21,"Jan/26||20-30||Lead||Social":4,"Fev/25||61-120||Cliente||Pago":2,"Mar/26||500+||Lead||Direto":1,"Dez/25||61-120||Cliente||Orgânico":1,"Nov/25||31-60||Lead||Pago":1,"Jan/26||500+||Lead||Direto":1,"Fev/26||20-30||Cliente||Orgânico":1,"Fev/26||20-30||Lead||Direto":6,"Mar/26||121-300||Lead||Pago":2,"Mai/25||20-30||Lead||Referência":6,"Fev/26||31-60||Lead||Social":1,"Fev/26||121-300||Lead||Orgânico":1,"Fev/26||500+||Lead||Direto":2,"Fev/26||31-60||Lead||Direto":4,"Fev/25||301-500||Lead||Outros":14,"Nov/25||20-30||Cliente||Social":1,"Set/25||31-60||Lead||Outros":1,"Out/25||61-120||Lead||Outros":3,"Out/25||61-120||Lead||Pago":15,"Mai/25||500+||Cliente||Orgânico":2,"Set/25||500+||Lead||Social":1,"Jan/25||121-300||Lead||Referência":1,"Fev/26||31-60||Lead||Orgânico":3,"Mai/25||61-120||Lead||Outros":95,"Dez/25||61-120||Lead||Pago":6,"Fev/26||301-500||Lead||Pago":6,"Fev/26||121-300||Lead||Referência":1,"Fev/26||61-120||Lead||Outros":6,"Fev/26||20-30||Lead||Social":3,"Fev/26||20-30||Lead||Referência":1,"Fev/26||31-60||Lead||Outros":3,"Set/25||31-60||Lead||Pago":1,"Jan/26||20-30||Lead||Orgânico":5,"Ago/25||121-300||Lead||Pago":1,"Set/25||20-30||Lead||Pago":27,"Set/25||61-120||Lead||Orgânico":1,"Jan/26||121-300||Lead||Pago":2,"Jan/25||20-30||Lead||Outros":127,"Nov/25||20-30||Lead||Pago":27,"Mar/25||31-60||Lead||Outros":1,"Jul/25||500+||Lead||Pago":3,"Jan/26||20-30||Cliente||Pago":1,"Jan/25||301-500||Lead||Pago":21,"Fev/26||20-30||Lead||Direto":6,"Mar/26||121-300||Lead||Outros":1,"Mai/25||20-30||Lead||Orgânico":7,"Out/25||500+||Cliente||Direto":1,"Fev/26||500+||Lead||Outros":1,"Jun/25||20-30||Cliente||Orgânico":2,"Nov/25||20-30||Cliente||Pago":1,"Jun/25||31-60||Lead||Outros":1,"Jul/25||20-30||Lead||Orgânico":9,"Mar/25||500+||Lead||Pago":39,"Jun/25||20-30||Lead||Outros":153,"Mai/25||20-30||Cliente||Outros":7,"Out/25||20-30||Cliente||Social":1,"Nov/25||61-120||Lead||Pago":8,"Jun/25||61-120||Cliente||Outros":2,"Mai/25||61-120||Cliente||Outros":5,"Mar/25||61-120||Cliente||Pago":1,"Out/25||20-30||Cliente||Pago":2,"Jan/26||61-120||Cliente||Pago":1,"Jun/25||61-120||Lead||Outros":69,"Mai/25||20-30||Lead||Outros":158,"Mai/25||20-30||Lead||Direto":11,"Fev/26||500+||Lead||Orgânico":1,"Jul/25||20-30||Cliente||Pago":1,"Ago/25||20-30||Lead||Pago":2,"Jan/26||61-120||Lead||Direto":3,"Mai/25||20-30||Cliente||Pago":2,"Abr/25||61-120||Cliente||Orgânico":1,"Jul/25||61-120||Lead||Orgânico":3,"Jan/26||20-30||Lead||Outros":3,"Set/25||301-500||Cliente||Orgânico":1,"Jan/26||500+||Lead||Outros":1,"Mai/25||500+||Lead||Direto":4,"Dez/25||31-60||Lead||Pago":2,"Nov/25||61-120||Lead||Outros":2,"Jan/26||20-30||Lead||Direto":5,"Abr/25||61-120||Cliente||Pago":2,"Dez/25||20-30||Cliente||Pago":1,"Mar/25||20-30||Lead||Outros":109,"Fev/25||20-30||Lead||Pago":171,"Nov/25||20-30||Lead||Outros":3,"Jul/25||121-300||Lead||Pago":2,"Out/25||20-30||Lead||Pago":18,"Dez/25||121-300||Lead||Pago":1,"Dez/25||500+||Lead||Outros":1,"Dez/25||20-30||Lead||Social":2,"Jun/25||301-500||Lead||Outros":15,"Abr/25||61-120||Cliente||Outros":2,"Jan/25||20-30||Cliente||Pago":3,"Jan/25||61-120||Cliente||Outros":2,"Mar/25||500+||Cliente||Pago":2,"Dez/25||500+||Lead||Pago":2,"Jan/26||61-120||Lead||Orgânico":1,"Jun/25||20-30||Lead||Orgânico":10,"Abr/25||20-30||Cliente||Outros":4,"Abr/25||500+||Cliente||Pago":1,"Jun/25||121-300||Lead||Referência":1,"Jan/26||61-120||Lead||Social":1,"Dez/25||61-120||Lead||Social":1,"Jan/26||121-300||Lead||Orgânico":1,"Abr/25||20-30||Cliente||Pago":3,"Dez/25||301-500||Lead||Orgânico":1,"Jun/25||20-30||Cliente||Outros":3,"Out/25||61-120||Lead||Social":2,"Nov/25||500+||Cliente||Pago":1,"Set/25||20-30||Cliente||Pago":1,"Jul/25||20-30||Cliente||Outros":1,"Mar/25||301-500||Lead||Pago":21,"Mai/25||500+||Cliente||Pago":1,"Set/25||61-120||Cliente||Pago":1,"Nov/25||121-300||Lead||Outros":1,"Dez/25||61-120||Lead||Direto":1,"Abr/25||20-30||Lead||Outros":148,"Mai/25||61-120||Lead||Referência":1,"Out/25||121-300||Lead||Pago":1,"Nov/25||500+||Lead||Pago":2,"Ago/25||61-120||Lead||Outros":1,"Set/25||20-30||Lead||Direto":2,"Nov/25||61-120||Lead||Referência":1,"Nov/25||121-300||Lead||Orgânico":2,"Fev/25||20-30||Lead||Referência":8,"Mai/25||500+||Cliente||Outros":1,"Jan/25||20-30||Cliente||Orgânico":1,"Mai/25||61-120||Cliente||Referência":1,"Mai/25||301-500||Lead||Direto":6,"Nov/25||20-30||Lead||Social":1,"Mar/25||500+||Lead||Orgânico":7,"Fev/25||500+||Lead||Orgânico":4,"Jan/25||61-120||Cliente||Orgânico":1,"Mai/25||301-500||Cliente||Outros":1,"Jun/25||61-120||Cliente||Pago":1,"Set/25||61-120||Lead||Pago":10,"Fev/25||61-120||Lead||Outros":63,"Mar/25||61-120||Cliente||Outros":1,"Mar/25||61-120||Lead||Outros":59,"Out/25||61-120||Lead||Orgânico":2,"Jan/25||301-500||Cliente||Pago":1,"Jul/25||20-30||Lead||Pago":15,"Out/25||61-120||Lead||Direto":1,"Set/25||20-30||Lead||Social":2,"Fev/25||61-120||Cliente||Outros":2,"Set/25||301-500||Lead||Referência":1,"Jul/25||500+||Lead||Outros":3,"Set/25||61-120||Lead||Outros":1,"Mar/25||20-30||Cliente||Direto":1,"Set/25||61-120||Lead||Social":2,"Set/25||301-500||Lead||Outros":1,"Mar/25||20-30||Lead||Pago":160,"Mar/25||20-30||Cliente||Outros":2,"Jun/25||500+||Lead||Orgânico":2,"Jan/25||20-30||Lead||Pago":190,"Fev/25||500+||Lead||Outros":12,"Set/25||301-500||Lead||Pago":3,"Jul/25||500+||Lead||Direto":1,"Jul/25||20-30||Lead||Referência":1,"Set/25||121-300||Lead||Orgânico":1,"Set/25||61-120||Lead||Referência":1,"Set/25||500+||Lead||Orgânico":1,"Mai/25||20-30||Lead||Social":12,"Jan/25||20-30||Lead||Referência":9,"Ago/25||61-120||Lead||Social":1,"Set/25||301-500||Lead||Orgânico":1,"Mar/25||61-120||Lead||Orgânico":8,"Set/25||121-300||Lead||Outros":1,"Fev/25||20-30||Cliente||Outros":1,"Abr/25||20-30||Cliente||Orgânico":1,"Mar/25||20-30||Cliente||Pago":2,"Mai/25||61-120||Cliente||Pago":1,"Jun/25||20-30||Cliente||Pago":2,"Jun/25||20-30||Lead||Pago":99,"Jul/25||301-500||Lead||Social":1,"Fev/25||61-120||Lead||Direto":2,"Jan/25||61-120||Lead||Outros":44,"Mai/25||61-120||Lead||Direto":9,"Fev/25||20-30||Lead||Outros":95,"Jan/25||20-30||Lead||Direto":6,"Fev/25||20-30||Cliente||Orgânico":1,"Abr/25||20-30||Lead||Pago":148,"Fev/25||61-120||Lead||Orgânico":10,"Mai/25||500+||Lead||Pago":27,"Jul/25||301-500||Lead||Pago":2,"Jan/25||301-500||Lead||Outros":5,"Jun/25||61-120||Lead||Direto":7,"Jul/25||61-120||Lead||Social":2,"Jul/25||301-500||Lead||Referência":1,"Abr/25||500+||Lead||Orgânico":5,"Mar/25||500+||Lead||Social":3,"Abr/25||301-500||Cliente||Orgânico":1,"Mai/25||61-120||Lead||Orgânico":10,"Jun/25||61-120||Lead||Pago":36,"Jul/25||301-500||Lead||Direto":1,"Jun/25||61-120||Lead||Social":5,"Mai/25||20-30||Lead||Pago":114,"Jun/25||500+||Lead||Pago":27,"Mar/25||20-30||Lead||Direto":10,"Abr/25||20-30||Lead||Orgânico":18,"Mar/25||20-30||Lead||Social":16,"Fev/25||61-120||Lead||Pago":51,"Jan/25||61-120||Lead||Pago":62,"Fev/25||121-300||Lead||Social":2,"Fev/25||61-120||Lead||Social":3,"Jan/25||61-120||Lead||Social":8,"Fev/25||301-500||Lead||Pago":16,"Fev/25||20-30||Lead||Direto":14,"Mar/25||61-120||Lead||Pago":50,"Jan/25||301-500||Lead||Orgânico":7,"Jan/25||20-30||Lead||Orgânico":28,"Jan/25||61-120||Lead||Orgânico":15,"Abr/25||61-120||Lead||Pago":46,"Mai/25||61-120||Lead||Pago":34,"Abr/25||301-500||Lead||Outros":18,"Jun/25||301-500||Lead||Pago":12,"Jun/25||61-120||Lead||Orgânico":4,"Jun/25||61-120||Lead||Referência":2,"Mai/25||500+||Lead||Outros":21,"Abr/25||20-30||Lead||Direto":11,"Abr/25||20-30||Lead||Social":12,"Abr/25||500+||Lead||Pago":30,"Mar/25||61-120||Lead||Referência":3,"Abr/25||301-500||Lead||Direto":2,"Jul/25||121-300||Lead||Referência":1,"Jul/25||500+||Lead||Orgânico":2,"Jul/25||20-30||Lead||Direto":2,"Abr/25||20-30||Lead||Referência":2,"Jun/25||500+||Lead||Social":2,"Jul/25||61-120||Lead||Direto":2,"Mai/25||121-300||Cliente||Pago":1,"Mar/25||500+||Cliente||Orgânico":2,"Jun/25||20-30||Lead||Direto":7,"Abr/25||500+||Lead||Outros":15,"Jun/25||500+||Lead||Direto":1,"Jul/25||500+||Lead||Social":1,"Jun/25||20-30||Lead||Referência":4,"Jun/25||500+||Lead||Referência":1,"Mai/25||121-300||Lead||Orgânico":2,"Mai/25||500+||Lead||Social":1,"Jun/25||301-500||Lead||Orgânico":1,"Jun/25||121-300||Lead||Pago":1,"Mai/25||61-120||Lead||Social":7,"Jun/25||121-300||Lead||Orgânico":1,"Mar/25||20-30||Lead||Orgânico":14,"Fev/25||121-300||Lead||Outros":1,"Mai/25||500+||Lead||Orgânico":4,"Fev/25||500+||Lead||Social":3,"Jan/25||500+||Lead||Pago":21,"Mar/25||61-120||Cliente||Direto":1,"Mar/25||500+||Lead||Direto":3,"Abr/25||301-500||Lead||Pago":27,"Abr/25||301-500||Lead||Orgânico":3,"Mai/25||301-500||Lead||Orgânico":2,"Jan/25||20-30||Cliente||Outros":3,"Jan/25||121-300||Lead||Social":1,"Fev/25||500+||Lead||Pago":32,"Jan/25||61-120||Lead||Direto":2,"Abr/25||61-120||Lead||Social":7,"Mar/25||20-30||Lead||Referência":3,"Mar/25||61-120||Lead||Social":4,"Mai/25||301-500||Lead||Referência":1,"Abr/25||500+||Lead||Social":3,"Abr/25||121-300||Lead||Pago":1,"Fev/25||61-120||Cliente||Social":1,"Mai/25||301-500||Lead||Social":1,"Abr/25||500+||Lead||Direto":2,"Abr/25||20-30||Cliente||Social":1,"Abr/25||61-120||Lead||Referência":1,"Abr/25||301-500||Lead||Social":1,"Mar/25||500+||Lead||Outros":15,"Jan/25||500+||Cliente||Orgânico":1,"Mar/25||301-500||Lead||Orgânico":1,"Fev/25||20-30||Cliente||Pago":1,"Abr/25||61-120||Lead||Direto":3,"Fev/25||20-30||Lead||Social":8,"Abr/25||121-300||Lead||Orgânico":1,"Mar/25||121-300||Lead||Outros":1,"Mar/25||500+||Lead||Referência":1,"Mar/25||121-300||Lead||Pago":2,"Mar/25||301-500||Lead||Referência":1,"Fev/25||61-120||Lead||Referência":2,"Fev/25||301-500||Lead||Direto":3,"Jan/25||500+||Lead||Outros":14,"Jan/25||20-30||Lead||Social":9,"Jan/25||500+||Lead||Orgânico":2,"Fev/25||301-500||Lead||Social":2,"Fev/25||500+||Lead||Direto":1,"Fev/25||121-300||Lead||Pago":1,"Jan/25||121-300||Lead||Pago":1,"Jan/25||301-500||Lead||Social":1,"Jan/25||500+||Lead||Direto":2,"Jan/25||121-300||Lead||Outros":1,"Jan/25||61-120||Lead||Referência":2,"Jan/25||500+||Lead||Referência":1,"Jan/25||301-500||Lead||Direto":1},"total_geral":13343,"total_com_faixa":4181,"generated_at":"03/03/2026 18:58"};
+
+// ═══════════════════════════════
+//  STATE
+// ═══════════════════════════════
+const FAIXA_COLORS = {'-20':'#22c55e','20-30':'#3b82f6','31-60':'#f97316','61-120':'#a855f7','121-300':'#eab308','301-500':'#ef4444','500+':'#06b6d4'};
+const STATUS_COLORS = {'Lead':'#3b82f6','Lead Qualificado':'#a855f7','Cliente':'#22c55e'};
+
+let selMes    = new Set(['todos']);
+let selFaixa  = new Set(['todos']);
+let selStatus = new Set(['todos']);
+let selOrigem = new Set(['todos']);
+
+let barChart, lineChart, statusChart;
+
+// ═══════════════════════════════
+//  DATA HELPERS
+// ═══════════════════════════════
+function query(fn) {
+  let total = 0;
+  for (const [key, val] of Object.entries(RAW.dataset)) {
+    const [m, f, s, o] = key.split('||');
+    const inMes    = selMes.has('todos')    || selMes.has(m);
+    const inFaixa  = selFaixa.has('todos')  || selFaixa.has(f);
+    const inStatus = selStatus.has('todos') || selStatus.has(s);
+    const inOrigem = selOrigem.has('todos') || selOrigem.has(o);
+    if (inMes && inFaixa && inStatus && inOrigem) fn(m, f, s, o, val);
+  }
+}
+
+function sumBy(dim) {
+  const acc = {};
+  query((m,f,s,o,v) => {
+    const k = dim==='m'?m:dim==='f'?f:dim==='s'?s:o;
+    acc[k] = (acc[k]||0)+v;
+  });
+  return acc;
+}
+
+function fmt(n){ return (n||0).toLocaleString('pt-BR'); }
+
+// ═══════════════════════════════
+//  FILTERS RENDER
+// ═══════════════════════════════
+function buildFilters() {
+  buildGroup('filterMes',   ['todos',...RAW.months],  selMes,    'mes');
+  buildGroup('filterFaixa', ['todos',...RAW.faixas],  selFaixa,  'faixa');
+  buildGroup('filterStatus',['todos',...RAW.statuses],selStatus, 'status');
+  buildGroup('filterOrigem',['todos',...RAW.origens], selOrigem, 'origem');
+}
+
+function buildGroup(id, items, selSet, type) {
+  const el = document.getElementById(id);
+  el.innerHTML = items.map(v => {
+    const label = v==='todos'?'Todos':v;
+    const active = selSet.has(v) ? (type==='status'?'active-status':type==='origem'?'active-origem':'active') : '';
+    return `<button class="pill ${active}" onclick="toggleFilter('${type}','${v}')">${label}</button>`;
+  }).join(' ');
+}
+
+function toggleFilter(type, val) {
+  const map = {mes:selMes, faixa:selFaixa, status:selStatus, origem:selOrigem};
+  const s = map[type];
+  if (val === 'todos') { s.clear(); s.add('todos'); }
+  else {
+    s.delete('todos');
+    if (s.has(val)) { s.delete(val); if (s.size===0) s.add('todos'); }
+    else s.add(val);
+  }
+  render();
+}
+
+function resetFilters() {
+  selMes=new Set(['todos']); selFaixa=new Set(['todos']);
+  selStatus=new Set(['todos']); selOrigem=new Set(['todos']);
+  render();
+}
+
+// ═══════════════════════════════
+//  KPIs
+// ═══════════════════════════════
+function renderKPIs() {
+  const byFaixa  = sumBy('f');
+  const byStatus = sumBy('s');
+  const byMes    = sumBy('m');
+
+  const total   = Object.values(byFaixa).reduce((a,b)=>a+b,0);
+  const clientes= byStatus['Cliente']||0;
+  const lq      = byStatus['Lead Qualificado']||0;
+  const taxaConv= total>0?((clientes+lq)/total*100).toFixed(1):'0.0';
+
+  const meses = Object.entries(byMes).sort((a,b)=>RAW.months.indexOf(a[0])-RAW.months.indexOf(b[0]));
+  const lastMes  = meses[meses.length-1];
+  const prevMes  = meses[meses.length-2];
+  const mom = lastMes && prevMes && prevMes[1]>0 ? (((lastMes[1]-prevMes[1])/prevMes[1])*100).toFixed(1) : null;
+
+  const topFaixa = Object.entries(byFaixa).sort((a,b)=>b[1]-a[1])[0];
+
+  const cards = [
+    {label:'Total com faixa',   value:fmt(total),         sub:`leads no período filtrado`,   accent:'#22c55e', badge:null},
+    {label:'Clientes',           value:fmt(clientes),      sub:`fecharam venda`,               accent:'#22c55e', badge:{text:`${taxaConv}% conv.`,cls:'badge-neutral'}},
+    {label:'Lead Qualificado',   value:fmt(lq),            sub:`demo realizada`,               accent:'#a855f7', badge:null},
+    {label:'Mês mais recente',   value:lastMes?fmt(lastMes[1]):'—', sub:lastMes?lastMes[0]:'—', accent:'#3b82f6',
+      badge: mom!==null?{text:(parseFloat(mom)>=0?'▲':'▼')+' '+Math.abs(mom)+'% vs anterior', cls:parseFloat(mom)>=0?'badge-up':'badge-down'}:null},
+    {label:'Faixa mais ativa',   value:topFaixa?topFaixa[0]:'—',   sub:topFaixa?fmt(topFaixa[1])+' leads':'—', accent:topFaixa?FAIXA_COLORS[topFaixa[0]]:'#22c55e', badge:null},
+  ];
+
+  document.getElementById('kpiRow').innerHTML = cards.map(c=>`
+    <div class="kpi-card" style="--accent:${c.accent}">
+      <div class="kpi-label">${c.label}</div>
+      <div class="kpi-value">${c.value}</div>
+      <div class="kpi-sub">${c.sub}</div>
+      ${c.badge?`<span class="kpi-badge ${c.badge.cls}">${c.badge.text}</span>`:''}
+    </div>`).join('');
+}
+
+// ═══════════════════════════════
+//  PERIOD LABEL
+// ═══════════════════════════════
+function renderPeriodLabel() {
+  const meses = sumBy('m');
+  const activeMeses = Object.keys(meses).sort((a,b)=>RAW.months.indexOf(a)-RAW.months.indexOf(b));
+  const label = selMes.has('todos')
+    ? (RAW.months[0]+' · ... · '+RAW.months[RAW.months.length-1])
+    : activeMeses.join(' · ');
+  document.getElementById('periodLabel').textContent = label;
+}
+
+// ═══════════════════════════════
+//  BAR CHART (empilhado)
+// ═══════════════════════════════
+function renderBar() {
+  const ctx = document.getElementById('barChart').getContext('2d');
+  if (barChart) barChart.destroy();
+
+  const activeMeses = selMes.has('todos') ? RAW.months : [...selMes].sort((a,b)=>RAW.months.indexOf(a)-RAW.months.indexOf(b));
+  const activeFaixas = selFaixa.has('todos') ? RAW.faixas : [...selFaixa];
+
+  const data = {};
+  activeFaixas.forEach(f => { data[f] = activeMeses.map(()=>0); });
+  query((m,f,s,o,v) => {
+    if (data[f] !== undefined) {
+      const idx = activeMeses.indexOf(m);
+      if (idx>=0) data[f][idx] += v;
+    }
+  });
+
+  barChart = new Chart(ctx, {
+    type:'bar',
+    data:{
+      labels: activeMeses,
+      datasets: activeFaixas.map(f=>({
+        label:f, data:data[f],
+        backgroundColor: FAIXA_COLORS[f]+'cc',
+        borderColor: FAIXA_COLORS[f],
+        borderWidth:0, borderRadius:2, borderSkipped:false,
+      }))
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{
+        legend:{labels:{color:'#666',font:{family:'Inter',size:10},boxWidth:10,padding:12}},
+        tooltip:{
+          backgroundColor:'#111',borderColor:'#333',borderWidth:1,
+          titleColor:'#f0f0f0',bodyColor:'#888',
+          titleFont:{family:'Inter',weight:'700'},bodyFont:{family:'Inter',size:11},
+          callbacks:{footer:items=>'Total: '+fmt(items.reduce((s,i)=>s+i.raw,0))}
+        }
+      },
+      scales:{
+        x:{stacked:true,grid:{display:false},ticks:{color:'#555',font:{family:'Inter',size:10}}},
+        y:{stacked:true,grid:{color:'#1a1a1a'},ticks:{color:'#555',font:{family:'Inter',size:10}}}
+      }
+    }
+  });
+}
+
+// ═══════════════════════════════
+//  LINE CHART
+// ═══════════════════════════════
+function renderLine() {
+  const ctx = document.getElementById('lineChart').getContext('2d');
+  if (lineChart) lineChart.destroy();
+
+  const activeMeses  = selMes.has('todos') ? RAW.months : [...selMes].sort((a,b)=>RAW.months.indexOf(a)-RAW.months.indexOf(b));
+  const activeFaixas = selFaixa.has('todos') ? RAW.faixas : [...selFaixa];
+
+  const data = {};
+  activeFaixas.forEach(f => { data[f] = activeMeses.map(()=>0); });
+  query((m,f,s,o,v) => {
+    if (data[f]!==undefined) {
+      const idx = activeMeses.indexOf(m);
+      if (idx>=0) data[f][idx] += v;
+    }
+  });
+
+  lineChart = new Chart(ctx, {
+    type:'line',
+    data:{
+      labels:activeMeses,
+      datasets:activeFaixas.map(f=>({
+        label:f, data:data[f],
+        borderColor:FAIXA_COLORS[f],
+        backgroundColor:FAIXA_COLORS[f]+'18',
+        pointBackgroundColor:FAIXA_COLORS[f],
+        pointRadius:3, pointHoverRadius:5,
+        tension:.35, fill:false, borderWidth:2,
+      }))
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{
+        legend:{labels:{color:'#666',font:{family:'Inter',size:10},boxWidth:10,padding:12}},
+        tooltip:{backgroundColor:'#111',borderColor:'#333',borderWidth:1,titleColor:'#f0f0f0',bodyColor:'#888',bodyFont:{family:'Inter',size:11},titleFont:{family:'Inter',weight:'700'}}
+      },
+      scales:{
+        x:{grid:{color:'#1a1a1a'},ticks:{color:'#555',font:{family:'Inter',size:10}}},
+        y:{grid:{color:'#1a1a1a'},ticks:{color:'#555',font:{family:'Inter',size:10}}}
+      }
+    }
+  });
+}
+
+// ═══════════════════════════════
+//  STATUS CHART (horizontal grouped)
+// ═══════════════════════════════
+function renderStatusChart() {
+  const ctx = document.getElementById('statusChart').getContext('2d');
+  if (statusChart) statusChart.destroy();
+
+  const activeFaixas = selFaixa.has('todos') ? RAW.faixas : [...selFaixa];
+  const data = {};
+  RAW.statuses.forEach(s => { data[s] = activeFaixas.map(()=>0); });
+  query((m,f,s,o,v) => {
+    if (data[s]!==undefined) {
+      const idx = activeFaixas.indexOf(f);
+      if (idx>=0) data[s][idx] += v;
+    }
+  });
+
+  statusChart = new Chart(ctx, {
+    type:'bar',
+    data:{
+      labels:activeFaixas,
+      datasets:RAW.statuses.map(s=>({
+        label:s, data:data[s],
+        backgroundColor:STATUS_COLORS[s]+'cc',
+        borderColor:STATUS_COLORS[s],
+        borderWidth:0, borderRadius:2,
+      }))
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      indexAxis:'y',
+      plugins:{
+        legend:{labels:{color:'#666',font:{family:'Inter',size:10},boxWidth:10,padding:12}},
+        tooltip:{backgroundColor:'#111',borderColor:'#333',borderWidth:1,titleColor:'#f0f0f0',bodyColor:'#888',bodyFont:{family:'Inter',size:11}}
+      },
+      scales:{
+        x:{stacked:false,grid:{color:'#1a1a1a'},ticks:{color:'#555',font:{family:'Inter',size:10}}},
+        y:{stacked:false,grid:{display:false},ticks:{color:'#aaa',font:{family:'Inter',size:11,weight:'600'}}}
+      }
+    }
+  });
+}
+
+// ═══════════════════════════════
+//  TABLE
+// ═══════════════════════════════
+function renderTable() {
+  const activeMeses  = selMes.has('todos') ? RAW.months : [...selMes].sort((a,b)=>RAW.months.indexOf(a)-RAW.months.indexOf(b));
+  const activeFaixas = selFaixa.has('todos') ? RAW.faixas : [...selFaixa];
+
+  // totais por faixa × mês
+  const matrix = {};
+  activeFaixas.forEach(f => { matrix[f]={}; activeMeses.forEach(m=>{ matrix[f][m]={Lead:0,'Lead Qualificado':0,Cliente:0,total:0}; }); });
+  query((m,f,s,o,v) => {
+    if (matrix[f]&&matrix[f][m]) { matrix[f][m][s]+=v; matrix[f][m].total+=v; }
+  });
+
+  const monthTotals = {};
+  activeMeses.forEach(m=>{ monthTotals[m]=activeFaixas.reduce((s,f)=>s+(matrix[f][m]?.total||0),0); });
+  const grandTotal = Object.values(monthTotals).reduce((a,b)=>a+b,0);
+  const faixaTotals = {};
+  activeFaixas.forEach(f=>{ faixaTotals[f]=activeMeses.reduce((s,m)=>s+(matrix[f][m]?.total||0),0); });
+
+  const thead = `<thead><tr>
+    <th>Faixa</th>
+    ${activeMeses.map(m=>`<th>${m}</th>`).join('')}
+    <th>Total</th><th>%</th>
+  </tr></thead>`;
+
+  const tbody = `<tbody>${activeFaixas.map(f=>`
+    <tr>
+      <td><span class="dot" style="background:${FAIXA_COLORS[f]}"></span>${f}</td>
+      ${activeMeses.map(m=>`<td>${matrix[f][m].total||'—'}</td>`).join('')}
+      <td style="color:${FAIXA_COLORS[f]};font-weight:700">${fmt(faixaTotals[f])}</td>
+      <td style="color:var(--muted)">${grandTotal>0?(faixaTotals[f]/grandTotal*100).toFixed(0)+'%':'—'}</td>
+    </tr>`).join('')}</tbody>`;
+
+  const tfoot = `<tfoot><tr>
+    <td>TOTAL</td>
+    ${activeMeses.map(m=>`<td>${fmt(monthTotals[m])}</td>`).join('')}
+    <td>${fmt(grandTotal)}</td><td>100%</td>
+  </tr></tfoot>`;
+
+  document.getElementById('detailTable').innerHTML = thead+tbody+tfoot;
+}
+
+// ═══════════════════════════════
+//  SPARKBARS
+// ═══════════════════════════════
+function renderSparks() {
+  const byFaixa = sumBy('f');
+  const activeFaixas = selFaixa.has('todos') ? RAW.faixas : [...selFaixa];
+  const totals = activeFaixas.map(f=>({f,v:byFaixa[f]||0})).filter(x=>x.v>0);
+  const grand  = totals.reduce((s,x)=>s+x.v,0);
+  const max    = Math.max(...totals.map(x=>x.v),1);
+
+  document.getElementById('sparkBars').innerHTML = totals.map(({f,v})=>`
+    <div class="spark-row">
+      <div class="spark-name">${f}</div>
+      <div class="spark-track">
+        <div class="spark-fill" style="width:0%;background:${FAIXA_COLORS[f]}" data-w="${(v/max*100).toFixed(1)}"></div>
+      </div>
+      <div class="spark-pct">${grand>0?(v/grand*100).toFixed(0)+'%':'—'}</div>
+      <div class="spark-num">${fmt(v)}</div>
+    </div>`).join('');
+
+  requestAnimationFrame(()=>{
+    document.querySelectorAll('.spark-fill').forEach(el=>{ el.style.width=el.dataset.w+'%'; });
+  });
+}
+
+// ═══════════════════════════════
+//  COVERAGE NOTICE
+// ═══════════════════════════════
+function renderNotice() {
+  const pct = (RAW.total_com_faixa/RAW.total_geral*100).toFixed(0);
+  const el = document.getElementById('coverageNotice');
+  el.style.display='flex';
+  el.textContent = `Cobertura parcial: ${pct}% dos leads (${fmt(RAW.total_com_faixa)} de ${fmt(RAW.total_geral)}) possuem faixa de colaboradores preenchida. Os demais não são exibidos neste dashboard. Ao corrigir o mapeamento no RD Station, reexporte o CSV para ampliar a cobertura.`;
+}
+
+// ═══════════════════════════════
+//  FOOTER
+// ═══════════════════════════════
+function renderFooter() {
+  document.getElementById('footerEl').textContent =
+    `Dados gerados em ${RAW.generated_at} · Base: RD Station Marketing · YouRH © 2026`;
+}
+
+// ═══════════════════════════════
+//  MAIN RENDER
+// ═══════════════════════════════
+function render() {
+  buildFilters();
+  renderPeriodLabel();
+  renderKPIs();
+  renderBar();
+  renderLine();
+  renderStatusChart();
+  renderTable();
+  renderSparks();
+}
+
+renderNotice();
+renderFooter();
+render();
+</script>
+</body>
+</html>
